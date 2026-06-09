@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="sk" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RehabAsistent - Cvičebný sprievodca</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .pulse-active { animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+        @keyframes pulse-ring { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.85;transform:scale(1.02)} }
+        .coach-in { animation: coach-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+        @keyframes coach-in { from{opacity:0;transform:translateY(6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#334155;border-radius:9999px}
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-full flex flex-col">
+
+<header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <i data-lucide="activity" class="w-6 h-6 text-slate-900 stroke-[2.5]"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-none bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">RehabAsistent</h1>
+                <span class="text-xs text-slate-400">Zdravý chrbát &amp; stabilné jadro</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btnVoiceSettings" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300">
+                <i data-lucide="settings-2" class="w-5 h-5"></i>
+            </button>
+            <span class="px-2 py-1 text-xs bg-teal-500/10 text-teal-400 rounded-full border border-teal-500/20 font-medium">Slovenčina</span>
+        </div>
+    </div>
+</header>
+
+<div id="voiceSettingsPanel" class="hidden bg-slate-800 border-b border-slate-700 p-4">
+    <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Hlasový syntetizátor</label>
+            <select id="voiceSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-teal-500"></select>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Rýchlosť reči (<span id="speedVal">0.88</span>x)</label>
+            <input type="range" id="speechRate" min="0.6" max="1.3" step="0.02" value="0.88" class="w-full accent-teal-500">
+        </div>
+        <div class="flex items-end">
+            <button id="btnTestVoice" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 px-4 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i> Otestovať hlas
+            </button>
+        </div>
+    </div>
+</div>
+
+<main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col gap-6">
+
+    <section class="bg-gradient-to-b from-slate-800/80 to-slate-900/50 rounded-3xl border border-slate-800 p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-teal-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Hlavička cviku -->
+        <div class="flex justify-between items-start gap-4">
+            <div class="flex-1 min-w-0">
+                <span id="playerCategory" class="text-xs font-bold text-teal-400 tracking-wider uppercase px-2.5 py-1 bg-teal-500/10 rounded-full border border-teal-500/20">1. DÝCHANIE</span>
+                <h2 id="playerExerciseName" class="text-2xl font-extrabold text-slate-100 mt-2 leading-tight">Bránicové dýchanie</h2>
+                <p id="playerDescription" class="text-slate-400 text-sm mt-1 leading-relaxed"></p>
+            </div>
+            <div class="text-right shrink-0">
+                <span class="text-xs text-slate-400">Cvik</span>
+                <div id="playerProgress" class="text-xl font-bold text-teal-400">1 / 11</div>
+            </div>
+        </div>
+
+        <!-- Coach box -->
+        <div id="coachBox" class="flex items-start gap-3 bg-slate-950/60 border border-slate-700 rounded-2xl p-4 min-h-[72px]">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="mic" class="w-4 h-4 text-slate-900"></i>
+            </div>
+            <p id="coachText" class="text-sm font-medium text-slate-200 leading-snug flex-1 self-center">Stlačte tlačidlo a spustite tréning.</p>
+        </div>
+
+        <!-- Vizuál + Timer -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-center bg-slate-900/40 p-4 rounded-2xl border border-slate-800/60">
+            <div class="flex items-center justify-center bg-slate-950/60 rounded-xl p-4 h-52 border border-slate-800 relative">
+                <div id="svgContainer" class="w-full h-full flex items-center justify-center"></div>
+                <div id="breathIndicator" class="absolute bottom-3 left-3 right-3 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs hidden">
+                    <span class="text-slate-400 font-medium">Dychový cyklus:</span>
+                    <span id="breathStateText" class="font-bold text-teal-400 uppercase tracking-wider">Nádych...</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-center justify-center gap-2 py-2">
+                <span id="timerStateBadge" class="text-xs font-bold uppercase tracking-widest px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full">PRÍPRAVA</span>
+                <div class="flex items-baseline gap-1">
+                    <span id="timerTime" class="text-7xl font-black font-mono tracking-tighter text-slate-100">06</span>
+                    <span class="text-2xl text-slate-500">s</span>
+                </div>
+                <div class="mt-2 text-center">
+                    <span class="text-xs text-slate-500 block">Nasleduje:</span>
+                    <span id="nextExerciseName" class="text-sm font-semibold text-slate-300">–</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ovládanie -->
+        <div class="flex flex-col gap-3">
+            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                <div id="overallProgressBar" class="bg-gradient-to-r from-teal-500 to-emerald-400 h-full transition-all duration-500" style="width:0%"></div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="btnPrev" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-300">
+                    <i data-lucide="skip-back" class="w-6 h-6"></i>
+                </button>
+                <button id="btnPlayPause" class="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-400 hover:from-teal-400 hover:to-emerald-300 active:scale-[0.98] transition shadow-lg shadow-teal-500/10 text-slate-950 font-extrabold flex items-center justify-center gap-2 text-lg">
+                    <i id="playIcon" data-lucide="play" class="w-6 h-6 fill-slate-950"></i>
+                    <span id="playText">SPUSTIŤ TRÉNING</span>
+                </button>
+                <button id="btnNext" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-300">
+                    <i data-lucide="skip-forward" class="w-6 h-6"></i>
+                </button>
+                <button id="btnReset" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition text-slate-400 hover:text-rose-400">
+                    <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Časy -->
+        <div class="border-t border-slate-800 pt-4 grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-500 block mb-1">Príprava</span>
+                <div class="flex items-center justify-center gap-2 font-bold text-slate-200">
+                    <button onclick="adjustTime('prep',-1)" class="hover:text-teal-400 text-base px-1">−</button>
+                    <span id="timePrep">8s</span>
+                    <button onclick="adjustTime('prep',1)" class="hover:text-teal-400 text-base px-1">+</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-500 block mb-1">Cvičenie</span>
+                <div class="flex items-center justify-center gap-2 font-bold text-slate-200">
+                    <button onclick="adjustTime('work',-5)" class="hover:text-teal-400 text-base px-1">−</button>
+                    <span id="timeWork">30s</span>
+                    <button onclick="adjustTime('work',5)" class="hover:text-teal-400 text-base px-1">+</button>
+                </div>
+            </div>
+            <div class="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
+                <span class="text-slate-500 block mb-1">Oddych</span>
+                <div class="flex items-center justify-center gap-2 font-bold text-slate-200">
+                    <button onclick="adjustTime('rest',-5)" class="hover:text-teal-400 text-base px-1">−</button>
+                    <span id="timeRest">15s</span>
+                    <button onclick="adjustTime('rest',5)" class="hover:text-teal-400 text-base px-1">+</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Zoznam cvikov -->
+    <section class="flex flex-col gap-4">
+        <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+            <i data-lucide="list-todo" class="w-5 h-5 text-teal-400"></i> Prehľad zostavy
+        </h3>
+        <div id="exerciseList" class="flex flex-col gap-3"></div>
+    </section>
+</main>
+
+<footer class="border-t border-slate-800 py-5 px-4 bg-slate-950/40 mt-auto text-center text-xs text-slate-500">
+    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p>© 2026 RehabAsistent — Hands-free fyzio sprievodca</p>
+        <span class="text-teal-500 font-medium">Metodika: McGill &amp; Dychové vzorce</span>
+    </div>
+</footer>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  DÁTA CVIKOV
+//  Každý cvik má:
+//   - position:  pokyn KEĎ TREBA ZAUJAŤ POLOHU (hovorí sa hneď pri starte prípravy)
+//   - prep:      čo sa hovorí na konci prípravy (tesne pred WORK) — upozornenie, čo príde
+//   - cues[]:    pokyny počas WORK fázy, spúšťajú sa po N sekundách od začiatku cviku
+//                { after: N, text: "..." }   po N sekundách od štartu WORK
+//   - breathing: true = zapne dychový indikátor
+// ════════════════════════════════════════════════════════
+const exercises = [
+  {
+    id:1, category:"1. DÝCHANIE",
+    name:"Bránicové dýchanie",
+    desc:"Ľah na chrbte, pokrčené kolená. Ruky na bruchu. Dýchajte hlboko do brucha.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="45" cy="68" r="8"/><path d="M53 72C65 72,75 80,110 80"/><path d="M110 80C125 80,135 80,140 78"/>
+      <path d="M140 78L155 45L170 83"/><path d="M53 72L80 62L105 73"/>
+      <path d="M90 80C95 72,110 72,115 80" class="stroke-emerald-400 stroke-[3] animate-pulse"/></svg>`,
+    breathing: true,
+    position: "Ľahnite si na chrbát. Pokrčte kolená a chodidlá oprite o zem. Položte obe ruky na brucho.",
+    prep:     "Pripravte sa. Za moment začneme dýchanie.",
+    cues: [
+      { after:1,  text:"Pomaly sa nadýchnite nosom. Cítite, ako sa brucho dvíha pod rukami? Hrudník zostáva takmer nehybný." },
+      { after:6,  text:"Pomaly vydýchnite ústami. Brucho klesá. Uvoľnite ramená." },
+      { after:11, text:"Znova nádych nosom do brucha..." },
+      { after:16, text:"Dlhý výdych... uvoľnite celé telo." },
+      { after:21, text:"Pokračujte. Pomalý nádych... a pomalý výdych." },
+      { after:27, text:"Výborne. Cítite hlboké uvoľnenie v driekovej časti." },
+    ]
+  },
+  {
+    id:2, category:"1. DÝCHANIE",
+    name:"Dýchanie s nohami na stoličke",
+    desc:"Nohy na stoličke v 90°. Spodný chrbát uvoľnite do podložky.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <path d="M140 85L140 50L175 50L175 85" class="stroke-slate-600" stroke-width="2"/>
+      <circle cx="45" cy="74" r="8"/><path d="M53 78C70 78,90 80,120 80"/>
+      <path d="M120 80L125 50L165 50"/><line x1="65" y1="80" x2="105" y2="80"/></svg>`,
+    breathing: true,
+    position: "Ľahnite si na chrbát. Zdvihnite nohy a položte ich na stoličku alebo pohovku tak, aby kolená zvierali uhol deväťdesiat stupňov.",
+    prep:     "Uistite sa, že spodný chrbát leží uvoľnene na podložke. Začíname.",
+    cues: [
+      { after:1,  text:"Nádych nosom. Cítite, ako sa drieková časť uvoľňuje do zeme?" },
+      { after:7,  text:"Pomalý výdych ústami. Na konci výdychu jemne stlačte brušné svaly." },
+      { after:13, text:"Nádych... nechajte brucho stúpať..." },
+      { after:19, text:"Výdych... ramená a čeľusť sú úplne uvoľnené." },
+      { after:25, text:"Ešte dva pomalé dychové cykly." },
+    ]
+  },
+  {
+    id:3, category:"2. MOBILITA KRÍŽOV",
+    name:"Koleno do strany",
+    desc:"Ľah na chrbte, pokrčené kolená. Pomaly spúšťajte kolená do strán max. 45°.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="45" cy="68" r="8"/><path d="M53 72C65 72,75 80,110 80"/>
+      <line x1="75" y1="74" x2="115" y2="55" class="stroke-teal-500/60"/>
+      <path d="M110 80L138 65L160 83"/></svg>`,
+    position: "Ľahnite si na chrbát. Pokrčte kolená, chodidlá na zemi na šírku bokov. Ruky rozložte do strán, dlane nahor. Ramená zostanú na zemi počas celého cviku.",
+    prep:     "Skontrolujte, či sú ramená uvoľnené na zemi. Začíname pohyb.",
+    cues: [
+      { after:1,  text:"Pomaly spúšťajte obe kolená doľava. Len do polohy, kde to cítite príjemne — maximálne 45 stupňov." },
+      { after:5,  text:"Podržte. Jeden... dva... tri... štyri... päť." },
+      { after:11, text:"Pomaly vráťte kolená do stredu. Vydýchnite." },
+      { after:15, text:"Teraz pomaly doprava. Ramená tlačte do zeme." },
+      { after:19, text:"Podržte. Jeden... dva... tri... štyri... päť." },
+      { after:25, text:"Späť do stredu. Cítite uvoľnenie v krížoch?" },
+      { after:29, text:"Ešte raz doľava, pomaly..." },
+      { after:33, text:"Podržte... jeden, dva, tri." },
+      { after:37, text:"Výborne. Krásna mobilita krížov." },
+    ]
+  },
+  {
+    id:4, category:"3. AKTIVÁCIA ZADKU",
+    name:"Jednoduchý mostík",
+    desc:"Ľah na chrbát, pokrčené nohy. Zdvihnite panvu nahor a pevne stlačte zadok.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="45" cy="74" r="8"/><path d="M53 77L115 50L145 50"/>
+      <path d="M145 50L155 83"/><line x1="53" y1="80" x2="110" y2="80"/>
+      <path d="M105 75L105 60" class="stroke-emerald-400" stroke-width="2"/>
+      <path d="M100 65L105 60L110 65" class="stroke-emerald-400" stroke-width="2"/></svg>`,
+    position: "Ľahnite si na chrbát. Pokrčte kolená, chodidlá na zemi na šírku bokov. Ruky voľne vedľa tela, dlane nadol.",
+    prep:     "Päty oprite pevne do zeme. Za moment zdvihneme panvu.",
+    cues: [
+      { after:1,  text:"S výdychom zatlačte päty do podložky a pomaly zdvíhajte panvu nahor." },
+      { after:5,  text:"Panva je hore. Pevne stlačte zadok. Podržte." },
+      { after:8,  text:"Jeden... dva... tri... štyri... päť. Zadok stlačený, brucho aktívne." },
+      { after:14, text:"Pomaly spúšťajte chrbticu nadol, obratec po obratci, ako keby ste skladali perlový náhrdelník." },
+      { after:19, text:"A znova nahor. Päty do zeme, výdych, zdvihnite panvu." },
+      { after:23, text:"Zadok pevne stlačený navrchu. Podržte päť sekúnd." },
+      { after:29, text:"Pomaly nadol. Super práca." },
+    ]
+  },
+  {
+    id:5, category:"3. AKTIVÁCIA ZADKU",
+    name:"Mostík s prednožením",
+    desc:"V polohe mostíka striedavo pomaly vystierajte jednu nohu bez klesnutia panvy.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="45" cy="74" r="8"/><path d="M53 77L115 50L135 50"/>
+      <path d="M135 50L145 83"/><line x1="135" y1="50" x2="175" y2="40" class="stroke-emerald-400"/>
+      <line x1="53" y1="80" x2="110" y2="80"/></svg>`,
+    position: "Ľahnite si na chrbát, pokrčte kolená. Zdvihnite panvu do polohy mostíka a udržujte ju tam počas celého cviku.",
+    prep:     "Päty do zeme, panva hore, zadok stlačený. Začíname.",
+    cues: [
+      { after:1,  text:"Pomaly vystierajte pravú nohu do vodorovnej polohy. Panva nesmie klesnúť." },
+      { after:5,  text:"Podržte pravú nohu. Jeden... dva... tri." },
+      { after:9,  text:"Vráťte pravú nohu. Teraz ľavú nohu pomaly vystierajte." },
+      { after:13, text:"Podržte ľavú... jeden, dva, tri." },
+      { after:17, text:"Vráťte ľavú. Striedate. Panva zostáva v rovine, nekývajte sa." },
+      { after:23, text:"Pravá noha, výdych pri zdvíhaní..." },
+      { after:28, text:"Ľavá noha. Kontrolujte panvu — drží sa?" },
+      { after:34, text:"Posledné opakovanie každej strany. Silné jadro." },
+      { after:42, text:"Výborne. Pomaly spustite panvu nadol." },
+    ]
+  },
+  {
+    id:6, category:"CORE AKTIVÁCIA",
+    name:"McGill Curl-Up",
+    desc:"Jedna noha vystretá, druhá pokrčená. Ruky pod driek. Mierne odlepte ramená.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <path d="M125 81L140 55L155 83"/><line x1="125" y1="81" x2="185" y2="81"/>
+      <circle cx="48" cy="65" r="8" class="stroke-emerald-400"/><path d="M54 70C65 72,85 80,125 81"/>
+      <path d="M54 70L80 81M80 81L95 81" class="stroke-slate-500"/></svg>`,
+    position: "Ľahnite si na chrbát. Ľavú nohu vystreňte, pravú pokrčte. Ruky podsuňte pod driek — tým chránite chrbticu.",
+    prep:     "Ruky máte pod driekom? Dobre. Teraz len jemne odlepíme ramená.",
+    cues: [
+      { after:1,  text:"S výdychom len jemne odlepte hlavu a ramená od zeme — len pár centimetrov. Pohľad smeruje k stropu." },
+      { after:5,  text:"Podržte polohu. Jeden... dva... tri... štyri... päť. Nehýbte chrbtom." },
+      { after:12, text:"Pomaly nadol. Hlava a ramená sa vracajú na zem." },
+      { after:16, text:"Ešte raz. Výdych a mierne odlepte ramená. Krk je predĺžením chrbtice." },
+      { after:20, text:"Podržte... jeden, dva, tri, štyri." },
+      { after:26, text:"Nadol. Skvelé jadro!" },
+    ]
+  },
+  {
+    id:7, category:"4. STABILITA CHRBTICE",
+    name:"Mŕtvy chrobák",
+    desc:"Ľah na chrbát, ruky a kolená hore. Spúšťajte opačnú ruku a nohu tesne nad zem.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="65" cy="74" r="8"/><path d="M73 78L130 78"/>
+      <path d="M130 78L130 50L155 50"/><line x1="85" y1="74" x2="85" y2="40"/>
+      <line x1="130" y1="78" x2="180" y2="78" class="stroke-emerald-400"/>
+      <line x1="85" y1="74" x2="35" y2="74" class="stroke-emerald-400"/></svg>`,
+    position: "Ľahnite si na chrbát. Zdvihnite obe ruky nahor smerom k stropu a obe kolená do vzduchu v uhle deväťdesiat stupňov. Chrbát pritlačte plne na podložku.",
+    prep:     "Chrbát musí zostať na zemi počas celého cviku. Začíname.",
+    cues: [
+      { after:1,  text:"Pomaly spúšťajte pravú ruku a ľavú nohu nadol. Kontrolovane, s výdychom." },
+      { after:5,  text:"Tesne nad zem. Podržte... jeden, dva, tri." },
+      { after:9,  text:"Vráťte späť hore. Chrbát sa odlepil? Pritlačte ho nadol." },
+      { after:13, text:"Teraz ľavá ruka a pravá noha. Pomaly a kontrolovane." },
+      { after:17, text:"Tesne nad zem, podržte... jeden, dva, tri." },
+      { after:21, text:"Späť hore. Výdych pri spúšťaní — pomáha udržať brucho aktívne." },
+      { after:26, text:"Ešte raz pravá ruka, ľavá noha..." },
+      { after:33, text:"A ľavá ruka, pravá noha. Pomalý pohyb." },
+      { after:38, text:"Výborne. Perfektná kontrola." },
+    ]
+  },
+  {
+    id:8, category:"4. STABILITA CHRBTICE",
+    name:"Pes a vták",
+    desc:"Na štyroch. Vystrite opačnú ruku a nohu v línii s trupom.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="75" cy="35" r="8"/><path d="M83 40L140 40"/>
+      <line x1="85" y1="42" x2="85" y2="83"/>
+      <path d="M140 40L140 65L155 65"/>
+      <line x1="75" y1="40" x2="30" y2="40" class="stroke-emerald-400"/>
+      <line x1="140" y1="40" x2="185" y2="40" class="stroke-emerald-400"/></svg>`,
+    position: "Postavte sa na štyri. Dlaňami na zem presne pod ramenami, kolenami pod bokmi. Chrbát je rovný ako stôl — ani prohnutý, ani guľatý.",
+    prep:     "Napnite brucho. Chrbát musí zostať vodorovný. Začíname.",
+    cues: [
+      { after:1,  text:"Pomaly vystierajte pravú ruku a ľavú nohu do vodorovnej polohy. Panva sa nesmie otáčať." },
+      { after:5,  text:"Palec na ľavej noge smeruje nadol. Podržte... jeden, dva, tri, štyri, päť." },
+      { after:11, text:"Pomaly kolenkom k lakťu pod telom — aktivujete hlboké svaly. A späť von." },
+      { after:15, text:"Teraz ľavá ruka a pravá noha. Pomaly." },
+      { after:19, text:"Cítite napätie v boku a zadku? Skvele. Podržte... jeden, dva, tri, štyri, päť." },
+      { after:25, text:"Kolenkom k lakťu a späť von." },
+      { after:29, text:"Ešte raz každá strana. Kontrolovaný pohyb." },
+      { after:37, text:"Výborne. Perfektná stabilita chrbtice." },
+    ]
+  },
+  {
+    id:9, category:"4. STABILITA CHRBTICE",
+    name:"Mačka a krava",
+    desc:"Na štyroch. S nádychom prohnite chrbát nadol (krava), s výdychom zaguľaťte nahor (mačka).",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="68" cy="46" r="8"/>
+      <path d="M75 42Q110 15 140 45" class="stroke-emerald-400 stroke-[3]"/>
+      <line x1="85" y1="45" x2="85" y2="83"/>
+      <path d="M140 45L140 65L155 65"/></svg>`,
+    position: "Postavte sa na štyri. Dlaňami na šírku ramien, kolenami na šírku bokov. Začnite v neutrálnej polohe.",
+    prep:     "Uvoľnite chrbát. Pohyb bude viesť panva, nie ramená.",
+    cues: [
+      { after:1,  text:"Nádych — panva sa skloní dopredu, brucho padá nadol, pohľad smeruje nahor. To je poloha kravy." },
+      { after:6,  text:"Výdych — panva sa zakrúti, chrbát sa guľatí nahor ako mačka, hlava klesá dolu." },
+      { after:11, text:"Nádych — krava. Pohyb začína od panvy." },
+      { after:16, text:"Výdych — mačka. Zaguľatte chrbát čo najviac. Cítite natiahnutie?" },
+      { after:21, text:"Pokračujte plynule vlastným tempom. Nádych — krava... výdych — mačka." },
+      { after:31, text:"Krásny rozsah pohybu. Nádych do brucha..." },
+      { after:39, text:"Posledné dva cykly. Pomaly." },
+      { after:43, text:"Vráťte sa do neutrálnej polohy. Výborne." },
+    ]
+  },
+  {
+    id:10, category:"4. STABILITA CHRBTICE",
+    name:"Kobra / Sfinga",
+    desc:"Ľah na bruchu. Oprite sa o predlaktia, hrudník jemne vytiahnite vpred a nahor.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="85" x2="190" y2="85" class="stroke-slate-700" stroke-width="1.5"/>
+      <path d="M190 81L110 81"/>
+      <path d="M110 81C95 81,75 60,60 45" class="stroke-emerald-400 stroke-[3]"/>
+      <circle cx="58" cy="33" r="8"/>
+      <path d="M68 53L68 81L90 81"/></svg>`,
+    position: "Ľahnite si na brucho. Čelo oprite o podložku. Predlaktia položte pred seba, lakte sú pod ramenami.",
+    prep:     "Nohy voľne natiahnuté, čelá nôh na zemi. Začíname zdvih.",
+    cues: [
+      { after:1,  text:"Pomaly vytiahnite hrudník vpred a nahor. Ramená tlačte dolu, ďalej od uší." },
+      { after:5,  text:"Cítite príjemné natiahnutie v bruchu a spodnom chrbáte? Podržte polohu." },
+      { after:9,  text:"Dýchajte normálne. Jeden... dva... tri... štyri... päť." },
+      { after:16, text:"Ak je to príjemné, mierne zvýšte zdvih." },
+      { after:22, text:"Dýchajte. Ramená dolu, pohľad vpred." },
+      { after:27, text:"Pomaly sa spúšťajte nadol. Skvelé natiahnutie." },
+    ]
+  },
+  {
+    id:11, category:"5. NATIAHNUTIE QL",
+    name:"Bočný úklon vo stoji",
+    desc:"V stoji prekrížte nohy. Zdvihnite ruku a jemne sa ukloňte na opačnú stranu.",
+    svg:`<svg viewBox="0 0 200 100" class="w-full h-full max-h-44 text-teal-400 stroke-current fill-none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="50" y1="92" x2="150" y2="92" class="stroke-slate-700" stroke-width="1.5"/>
+      <circle cx="92" cy="18" r="7"/>
+      <path d="M100 90L100 60C100 50,95 38,92 25" class="stroke-emerald-400 stroke-[3]"/>
+      <path d="M92 25Q75 10 95 3" class="stroke-emerald-400"/>
+      <path d="M100 90L93 90"/><path d="M100 90L107 90"/>
+      <path d="M97 45L110 50L104 60"/></svg>`,
+    position: "Postavte sa rovno. Chodidlá na šírku bokov. Pomaly sa uistite, že stojíte stabilne.",
+    prep:     "Teraz prekrížte pravú nohu za ľavú. Pripravte sa na úklon.",
+    cues: [
+      { after:1,  text:"Pravú ruku zdvihnite nahor. Pomaly sa ukloňte doľava. Cítite natiahnutie pravého boku?" },
+      { after:5,  text:"Podržte. Jeden... dva... tri... štyri... päť. Dýchajte." },
+      { after:11, text:"Vráťte sa do stredu. Spustite ruku." },
+      { after:15, text:"Teraz prekrížte ľavú nohu za pravú. Ľavú ruku zdvihnite hore." },
+      { after:19, text:"Pomaly sa ukloňte doprava. Jemne, bez trhnutia." },
+      { after:23, text:"Podržte... jeden, dva, tri, štyri, päť." },
+      { after:29, text:"Späť do stredu. Spustite ruku." },
+      { after:33, text:"Ešte raz pravá strana. Pravá noha vzadu, pravá ruka hore, úklon doľava." },
+      { after:38, text:"Gratulujeme! Celá rehabilitačná zostava je dokončená. Výborne ste pracovali!" },
+    ]
+  }
+];
+
+// ════════════════════════════════════════════════════════
+//  STAV
+// ════════════════════════════════════════════════════════
+let currentExIdx = 0;
+let phase = 'IDLE';   // IDLE | PREP | WORK | REST
+let timeLeft = 8;
+let ticker = null;
+let isPlaying = false;
+let workElapsed = 0;  // koľko sekúnd ubehlo od štartu WORK
+
+let cfgPrep = 8;
+let cfgWork = 30;
+let cfgRest = 15;
+
+// Fronta hlasových správ — neskáčeme do reči
+let speechQueue = [];
+let isSpeaking = false;
+
+// TTS
+const synth = window.speechSynthesis;
+let selectedVoice = null;
+let availableVoices = [];
+
+// ════════════════════════════════════════════════════════
+//  TTS — FRONTA (bez cancel(), správy sa radia za sebou)
+// ════════════════════════════════════════════════════════
+function enqueue(text) {
+    speechQueue.push(text);
+    if (!isSpeaking) drainQueue();
+}
+
+function drainQueue() {
+    if (!synth || speechQueue.length === 0) { isSpeaking = false; return; }
+    isSpeaking = true;
+    const text = speechQueue.shift();
+    showCoach(text);
+    const utt = new SpeechSynthesisUtterance(text);
+    if (selectedVoice) utt.voice = selectedVoice;
+    utt.rate = parseFloat(document.getElementById('speechRate').value);
+    utt.onend = () => {
+        // krátka pauza medzi vetami
+        setTimeout(drainQueue, 350);
+    };
+    utt.onerror = () => {
+        setTimeout(drainQueue, 350);
+    };
+    synth.speak(utt);
+}
+
+function clearSpeech() {
+    speechQueue = [];
+    isSpeaking = false;
+    synth && synth.cancel();
+}
+
+// ════════════════════════════════════════════════════════
+//  COACH BOX
+// ════════════════════════════════════════════════════════
+function showCoach(text) {
+    const el = document.getElementById('coachText');
+    el.textContent = text;
+    const box = document.getElementById('coachBox');
+    box.classList.remove('coach-in');
+    void box.offsetWidth;
+    box.classList.add('coach-in');
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+    initVoices();
+    loadExercise(0);
+    generateList();
+
+    document.getElementById('btnPlayPause').addEventListener('click', togglePlay);
+    document.getElementById('btnReset').addEventListener('click', resetExercise);
+    document.getElementById('btnNext').addEventListener('click', skipNext);
+    document.getElementById('btnPrev').addEventListener('click', skipPrev);
+    document.getElementById('btnVoiceSettings').addEventListener('click', () => {
+        document.getElementById('voiceSettingsPanel').classList.toggle('hidden');
+    });
+    document.getElementById('speechRate').addEventListener('input', e => {
+        document.getElementById('speedVal').textContent = parseFloat(e.target.value).toFixed(2);
+    });
+    document.getElementById('btnTestVoice').addEventListener('click', () => {
+        clearSpeech();
+        enqueue("Rehab asistent je pripravený. Poďme na to!");
+    });
+    lucide.createIcons();
+});
+
+function initVoices() {
+    if (!synth) return;
+    const load = () => {
+        availableVoices = synth.getVoices();
+        const sel = document.getElementById('voiceSelect');
+        sel.innerHTML = '';
+        let best = -1;
+        availableVoices.forEach((v, i) => {
+            const o = document.createElement('option');
+            o.value = i; o.textContent = `${v.name} (${v.lang})`;
+            if (best === -1 && (v.lang.toLowerCase().startsWith('sk') || v.name.toLowerCase().includes('slovak'))) best = i;
+            sel.appendChild(o);
+        });
+        if (best === -1) best = availableVoices.findIndex(v => v.lang.toLowerCase().startsWith('cs'));
+        if (best === -1 && availableVoices.length > 0) best = 0;
+        if (best !== -1) { sel.selectedIndex = best; selectedVoice = availableVoices[best]; }
+    };
+    load();
+    if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = load;
+    document.getElementById('voiceSelect').addEventListener('change', e => {
+        selectedVoice = availableVoices[e.target.value];
+    });
+}
+
+// ════════════════════════════════════════════════════════
+//  HLAVNÝ CYKLUS
+// ════════════════════════════════════════════════════════
+function togglePlay() {
+    if (isPlaying) {
+        pauseTimer();
+    } else {
+        if (phase === 'IDLE') startPhasePrep();
+        else resumeTimer();
+    }
+}
+
+function startPhasePrep() {
+    const ex = exercises[currentExIdx];
+    phase = 'PREP';
+    timeLeft = cfgPrep;
+    isPlaying = true;
+    workElapsed = 0;
+    updateUI();
+
+    // 1. Povie názov cviku
+    // 2. Opíše polohu (position)
+    // 3. Tesne pred koncom prípravy zaznie prep pokyn — rieši sa v tiku
+    enqueue(`Cvik číslo ${currentExIdx + 1}: ${ex.name}.`);
+    enqueue(ex.position);
+
+    startTick();
+}
+
+function startTick() {
+    clearInterval(ticker);
+    ticker = setInterval(onTick, 1000);
+}
+
+function pauseTimer() {
+    isPlaying = false;
+    clearInterval(ticker);
+    updateUI();
+}
+
+function resumeTimer() {
+    isPlaying = true;
+    updateUI();
+    startTick();
+}
+
+function onTick() {
+    timeLeft--;
+    updateTimerDisplay();
+
+    const ex = exercises[currentExIdx];
+
+    if (phase === 'PREP') {
+        // 2 sekundy pred koncom prípravy — hovorí prep pokyn
+        if (timeLeft === 2 && ex.prep) {
+            enqueue(ex.prep);
+        }
+        if (timeLeft <= 0) {
+            transitionToWork();
+        }
+    } else if (phase === 'WORK') {
+        workElapsed++;
+        // Spúšťame cues podľa workElapsed
+        if (ex.cues) {
+            ex.cues.forEach(cue => {
+                if (cue.after === workElapsed) {
+                    enqueue(cue.text);
+                }
+            });
+        }
+        // Dychový asistent
+        if (ex.breathing) handleBreathUI(timeLeft);
+        if (timeLeft <= 0) transitionToRest();
+    } else if (phase === 'REST') {
+        if (timeLeft <= 0) transitionToNext();
+    }
+}
+
+function transitionToWork() {
+    phase = 'WORK';
+    timeLeft = cfgWork;
+    workElapsed = 0;
+    updateUI();
+    // "Začnite" sa hovorí hneď
+    enqueue("Začnite cvičiť!");
+}
+
+function transitionToRest() {
+    clearInterval(ticker);
+    const nextEx = exercises[currentExIdx + 1];
+    if (cfgRest > 0) {
+        phase = 'REST';
+        timeLeft = cfgRest;
+        updateUI();
+        const msg = nextEx
+            ? `Výborne! Oddychujte. Nasleduje: ${nextEx.name}.`
+            : "Skvelá práca! Toto bol posledný cvik.";
+        enqueue(msg);
+        startTick();
+    } else {
+        doNextExercise();
+    }
+}
+
+function transitionToNext() {
+    doNextExercise();
+}
+
+function doNextExercise() {
+    clearInterval(ticker);
+    if (currentExIdx < exercises.length - 1) {
+        currentExIdx++;
+        loadExercise(currentExIdx);
+        generateList();
+        startPhasePrep();
+    } else {
+        // Koniec
+        isPlaying = false;
+        phase = 'IDLE';
+        timeLeft = 0;
+        updateUI();
+        document.getElementById('overallProgressBar').style.width = '100%';
+        enqueue("Gratulujeme! Úspešne ste dokončili celú rehabilitačnú zostavu. Váš chrbát sa vám poďakuje. Výborne!");
+    }
+}
+
+// ════════════════════════════════════════════════════════
+//  OVLÁDANIE
+// ════════════════════════════════════════════════════════
+function resetExercise() {
+    clearInterval(ticker);
+    clearSpeech();
+    phase = 'IDLE';
+    workElapsed = 0;
+    isPlaying = false;
+    loadExercise(currentExIdx);
+    updateUI();
+    showCoach("Cvik reštartovaný. Stlačte Spustiť.");
+}
+
+function skipNext() {
+    clearInterval(ticker);
+    clearSpeech();
+    if (currentExIdx < exercises.length - 1) {
+        currentExIdx++;
+        phase = 'IDLE';
+        workElapsed = 0;
+        isPlaying = false;
+        loadExercise(currentExIdx);
+        generateList();
+        updateUI();
+    }
+}
+
+function skipPrev() {
+    clearInterval(ticker);
+    clearSpeech();
+    if (currentExIdx > 0) {
+        currentExIdx--;
+        phase = 'IDLE';
+        workElapsed = 0;
+        isPlaying = false;
+        loadExercise(currentExIdx);
+        generateList();
+        updateUI();
+    }
+}
+
+function selectExercise(idx) {
+    clearInterval(ticker);
+    clearSpeech();
+    currentExIdx = idx;
+    phase = 'IDLE';
+    workElapsed = 0;
+    isPlaying = false;
+    loadExercise(idx);
+    generateList();
+    updateUI();
+}
+
+// ════════════════════════════════════════════════════════
+//  UI
+// ════════════════════════════════════════════════════════
+function loadExercise(idx) {
+    const ex = exercises[idx];
+    document.getElementById('playerCategory').textContent = ex.category;
+    document.getElementById('playerExerciseName').textContent = ex.name;
+    document.getElementById('playerDescription').textContent = ex.desc;
+    document.getElementById('playerProgress').textContent = `${idx + 1} / ${exercises.length}`;
+    document.getElementById('svgContainer').innerHTML = ex.svg;
+    const nextEx = exercises[idx + 1];
+    document.getElementById('nextExerciseName').textContent = nextEx ? nextEx.name : 'Koniec zostavy';
+    timeLeft = cfgPrep;
+    updateTimerDisplay();
+    document.getElementById('breathIndicator').classList.add('hidden');
+}
+
+function updateUI() {
+    // Play button
+    const icon = document.getElementById('playIcon');
+    const txt  = document.getElementById('playText');
+    if (isPlaying) {
+        icon.setAttribute('data-lucide','pause');
+        txt.textContent = 'POZASTAVIŤ';
+    } else {
+        icon.setAttribute('data-lucide','play');
+        txt.textContent = phase === 'IDLE' ? 'SPUSTIŤ TRÉNING' : 'POKRAČOVAŤ';
+    }
+    lucide.createIcons();
+
+    // Progress bar
+    document.getElementById('overallProgressBar').style.width =
+        `${(currentExIdx / exercises.length) * 100}%`;
+
+    // Badge
+    const badge = document.getElementById('timerStateBadge');
+    const breathEl = document.getElementById('breathIndicator');
+    if (phase === 'PREP' || phase === 'IDLE') {
+        badge.textContent = 'PRÍPRAVA';
+        badge.className = "text-xs font-bold uppercase tracking-widest px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full";
+        breathEl.classList.add('hidden');
+    } else if (phase === 'WORK') {
+        badge.textContent = 'CVIČENIE';
+        badge.className = "text-xs font-bold uppercase tracking-widest px-3 py-1 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-full pulse-active";
+        if (exercises[currentExIdx].breathing) breathEl.classList.remove('hidden');
+    } else {
+        badge.textContent = 'ODDYCH';
+        badge.className = "text-xs font-bold uppercase tracking-widest px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full";
+        breathEl.classList.add('hidden');
+    }
+}
+
+function updateTimerDisplay() {
+    document.getElementById('timerTime').textContent = timeLeft.toString().padStart(2,'0');
+}
+
+function handleBreathUI(remaining) {
+    const cycleTime = 5;
+    const phase_ = Math.floor(remaining / cycleTime) % 2;
+    const el = document.getElementById('breathStateText');
+    if (phase_ === 0) {
+        el.textContent = 'VÝDYCH...';
+        el.className = 'font-bold text-rose-400 uppercase tracking-wider';
+    } else {
+        el.textContent = 'NÁDYCH...';
+        el.className = 'font-bold text-emerald-400 uppercase tracking-wider';
+    }
+}
+
+function adjustTime(type, delta) {
+    if (type==='prep') {
+        cfgPrep = Math.max(3, cfgPrep + delta);
+        document.getElementById('timePrep').textContent = `${cfgPrep}s`;
+        if (phase==='PREP') { timeLeft = cfgPrep; updateTimerDisplay(); }
+    } else if (type==='work') {
+        cfgWork = Math.max(5, cfgWork + delta);
+        document.getElementById('timeWork').textContent = `${cfgWork}s`;
+        if (phase==='WORK') { timeLeft = cfgWork; updateTimerDisplay(); }
+    } else {
+        cfgRest = Math.max(0, cfgRest + delta);
+        document.getElementById('timeRest').textContent = `${cfgRest}s`;
+        if (phase==='REST') { timeLeft = cfgRest; updateTimerDisplay(); }
+    }
+}
+
+// ════════════════════════════════════════════════════════
+//  ZOZNAM
+// ════════════════════════════════════════════════════════
+function generateList() {
+    const container = document.getElementById('exerciseList');
+    container.innerHTML = '';
+    exercises.forEach((ex, idx) => {
+        const active = idx === currentExIdx;
+        const div = document.createElement('div');
+        div.className = `p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between cursor-pointer ${
+            active
+            ? 'bg-gradient-to-r from-slate-800 to-slate-800/40 border-teal-500/40 shadow-md'
+            : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/20'
+        }`;
+        div.setAttribute('onclick', `selectExercise(${idx})`);
+        div.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${active ? 'bg-teal-500 text-slate-950' : 'bg-slate-800 text-slate-400'}">
+                    ${idx + 1}
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-teal-400/80 uppercase tracking-widest block">${ex.category}</span>
+                    <span class="font-semibold text-sm ${active ? 'text-slate-100' : 'text-slate-300'}">${ex.name}</span>
+                </div>
+            </div>
+            <span class="text-xs text-slate-500 font-mono font-bold">${ex.duration || cfgWork}s</span>
+        `;
+        container.appendChild(div);
+    });
+    lucide.createIcons();
+}
+</script>
+</body>
+</html>
